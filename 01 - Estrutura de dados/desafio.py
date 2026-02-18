@@ -1,8 +1,8 @@
 import textwrap
-
+from datetime import datetime
 
 def menu():
-    menu = """\n
+    menu_text = """\n
     ================ MENU ================
     [d]\tDepositar
     [s]\tSacar
@@ -12,13 +12,15 @@ def menu():
     [nu]\tNovo usuário
     [q]\tSair
     => """
-    return input(textwrap.dedent(menu))
+    return input(textwrap.dedent(menu_text))
 
 
 def depositar(saldo, valor, extrato, /):
     if valor > 0:
         saldo += valor
-        extrato += f"Depósito:\tR$ {valor:.2f}\n"
+        # Adicionado timestamp para registrar quando o depósito ocorreu
+        data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        extrato += f"[{data_hora}] Depósito:\tR$ {valor:.2f}\n"
         print("\n=== Depósito realizado com sucesso! ===")
     else:
         print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
@@ -35,28 +37,35 @@ def sacar(*, saldo, valor, extrato, limite, numero_saques, limite_saques):
         print("\n@@@ Operação falhou! Você não tem saldo suficiente. @@@")
 
     elif excedeu_limite:
-        print("\n@@@ Operação falhou! O valor do saque excede o limite. @@@")
+        print("\n@@@ Operação falhou! O valor do saque excede o limite de R$ 500,00. @@@")
 
     elif excedeu_saques:
-        print("\n@@@ Operação falhou! Número máximo de saques excedido. @@@")
+        print("\n@@@ Operação falhou! Número máximo de saques diários excedido. @@@")
 
     elif valor > 0:
         saldo -= valor
-        extrato += f"Saque:\t\tR$ {valor:.2f}\n"
+        data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        extrato += f"[{data_hora}] Saque:\t\tR$ {valor:.2f}\n"
         numero_saques += 1
         print("\n=== Saque realizado com sucesso! ===")
 
     else:
         print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
 
-    return saldo, extrato
+    # Retornando numero_saques para atualizar o contador na main
+    return saldo, extrato, numero_saques
 
 
 def exibir_extrato(saldo, /, *, extrato):
     print("\n================ EXTRATO ================")
     print("Não foram realizadas movimentações." if not extrato else extrato)
-    print(f"\nSaldo:\t\tR$ {saldo:.2f}")
+    print(f"\nSaldo atual:\tR$ {saldo:.2f}")
     print("==========================================")
+
+
+def filtrar_usuario(cpf, usuarios):
+    usuarios_filtrados = [usuario for usuario in usuarios if usuario["cpf"] == cpf]
+    return usuarios_filtrados[0] if usuarios_filtrados else None
 
 
 def criar_usuario(usuarios):
@@ -69,16 +78,18 @@ def criar_usuario(usuarios):
 
     nome = input("Informe o nome completo: ")
     data_nascimento = input("Informe a data de nascimento (dd-mm-aaaa): ")
+    
+    # Validação da data usando datetime
+    try:
+        datetime.strptime(data_nascimento, "%d-%m-%Y")
+    except ValueError:
+        print("\n@@@ Data inválida! Use o formato dd-mm-aaaa. Cadastro cancelado. @@@")
+        return
+
     endereco = input("Informe o endereço (logradouro, nro - bairro - cidade/sigla estado): ")
 
     usuarios.append({"nome": nome, "data_nascimento": data_nascimento, "cpf": cpf, "endereco": endereco})
-
-    print("=== Usuário criado com sucesso! ===")
-
-
-def filtrar_usuario(cpf, usuarios):
-    usuarios_filtrados = [usuario for usuario in usuarios if usuario["cpf"] == cpf]
-    return usuarios_filtrados[0] if usuarios_filtrados else None
+    print("\n=== Usuário criado com sucesso! ===")
 
 
 def criar_conta(agencia, numero_conta, usuarios):
@@ -93,13 +104,17 @@ def criar_conta(agencia, numero_conta, usuarios):
 
 
 def listar_contas(contas):
+    if not contas:
+        print("\n@@@ Nenhuma conta cadastrada ainda. @@@")
+        return
+
     for conta in contas:
         linha = f"""\
             Agência:\t{conta['agencia']}
             C/C:\t\t{conta['numero_conta']}
             Titular:\t{conta['usuario']['nome']}
         """
-        print("=" * 100)
+        print("=" * 40)
         print(textwrap.dedent(linha))
 
 
@@ -115,24 +130,29 @@ def main():
     contas = []
 
     while True:
-        opcao = menu()
+        opcao = menu().lower().strip()
 
         if opcao == "d":
-            valor = float(input("Informe o valor do depósito: "))
-
-            saldo, extrato = depositar(saldo, valor, extrato)
+            try:
+                valor = float(input("Informe o valor do depósito: "))
+                saldo, extrato = depositar(saldo, valor, extrato)
+            except ValueError:
+                print("\n@@@ Erro! Digite um valor numérico válido. @@@")
 
         elif opcao == "s":
-            valor = float(input("Informe o valor do saque: "))
-
-            saldo, extrato = sacar(
-                saldo=saldo,
-                valor=valor,
-                extrato=extrato,
-                limite=limite,
-                numero_saques=numero_saques,
-                limite_saques=LIMITE_SAQUES,
-            )
+            try:
+                valor = float(input("Informe o valor do saque: "))
+                # Atualizando saldo, extrato E numero_saques
+                saldo, extrato, numero_saques = sacar(
+                    saldo=saldo,
+                    valor=valor,
+                    extrato=extrato,
+                    limite=limite,
+                    numero_saques=numero_saques,
+                    limite_saques=LIMITE_SAQUES,
+                )
+            except ValueError:
+                print("\n@@@ Erro! Digite um valor numérico válido. @@@")
 
         elif opcao == "e":
             exibir_extrato(saldo, extrato=extrato)
@@ -151,10 +171,12 @@ def main():
             listar_contas(contas)
 
         elif opcao == "q":
+            print("\nSaindo... Obrigado por utilizar nosso sistema bancário!")
             break
 
         else:
-            print("Operação inválida, por favor selecione novamente a operação desejada.")
+            print("\n@@@ Operação inválida! Selecione uma opção do menu. @@@")
 
 
-main()
+if __name__ == "__main__":
+    main()
