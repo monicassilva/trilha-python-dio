@@ -18,7 +18,6 @@ def menu():
 def depositar(saldo, valor, extrato, /):
     if valor > 0:
         saldo += valor
-        # Adicionado timestamp para registrar quando o depósito ocorreu
         data_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         extrato += f"[{data_hora}] Depósito:\tR$ {valor:.2f}\n"
         print("\n=== Depósito realizado com sucesso! ===")
@@ -37,10 +36,12 @@ def sacar(*, saldo, valor, extrato, limite, numero_saques, limite_saques):
         print("\n@@@ Operação falhou! Você não tem saldo suficiente. @@@")
 
     elif excedeu_limite:
-        print("\n@@@ Operação falhou! O valor do saque excede o limite de R$ 500,00. @@@")
+        # CORREÇÃO: Agora exibe o valor da variável 'limite' dinamicamente
+        print(f"\n@@@ Operação falhou! O valor do saque excede o limite de R$ {limite:.2f}. @@@")
 
     elif excedeu_saques:
-        print("\n@@@ Operação falhou! Número máximo de saques diários excedido. @@@")
+        # CORREÇÃO: Agora exibe o valor da variável 'limite_saques' dinamicamente
+        print(f"\n@@@ Operação falhou! Limite de {limite_saques} saques diários excedido. @@@")
 
     elif valor > 0:
         saldo -= valor
@@ -52,7 +53,6 @@ def sacar(*, saldo, valor, extrato, limite, numero_saques, limite_saques):
     else:
         print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
 
-    # Retornando numero_saques para atualizar o contador na main
     return saldo, extrato, numero_saques
 
 
@@ -79,7 +79,6 @@ def criar_usuario(usuarios):
     nome = input("Informe o nome completo: ")
     data_nascimento = input("Informe a data de nascimento (dd-mm-aaaa): ")
     
-    # Validação da data usando datetime
     try:
         datetime.strptime(data_nascimento, "%d-%m-%Y")
     except ValueError:
@@ -119,11 +118,12 @@ def listar_contas(contas):
 
 
 def main():
+    # Variáveis de Configuração (Mude aqui e tudo se atualizará)
     LIMITE_SAQUES = 3
     AGENCIA = "0001"
+    VALOR_LIMITE_SAQUE = 500.0
 
     saldo = 0
-    limite = 500
     extrato = ""
     numero_saques = 0
     usuarios = []
@@ -142,12 +142,11 @@ def main():
         elif opcao == "s":
             try:
                 valor = float(input("Informe o valor do saque: "))
-                # Atualizando saldo, extrato E numero_saques
                 saldo, extrato, numero_saques = sacar(
                     saldo=saldo,
                     valor=valor,
                     extrato=extrato,
-                    limite=limite,
+                    limite=VALOR_LIMITE_SAQUE,
                     numero_saques=numero_saques,
                     limite_saques=LIMITE_SAQUES,
                 )
@@ -163,7 +162,6 @@ def main():
         elif opcao == "nc":
             numero_conta = len(contas) + 1
             conta = criar_conta(AGENCIA, numero_conta, usuarios)
-
             if conta:
                 contas.append(conta)
 
@@ -171,12 +169,11 @@ def main():
             listar_contas(contas)
 
         elif opcao == "q":
-            print("\nSaindo... Obrigado por utilizar nosso sistema bancário!")
+            print("\nSaindo... Obrigado por utilizar nosso sistema!")
             break
 
         else:
-            print("\n@@@ Operação inválida! Selecione uma opção do menu. @@@")
-
+            print("\n@@@ Operação inválida! @@@")
 
 if __name__ == "__main__":
     main()
